@@ -4,12 +4,13 @@
   "main": "index.js",
   "license": "MIT",
   "scripts": {
-    "dev": "nodemon src/server.js",
-    "docker": "docker-compose up",
+    "dev": "docker-compose up -d && nodemon src/server.js",
+    "docker": "docker-compose up -d database",
     "eslint": "yarn eslint --fix src --ext .js"
   },
   "dependencies": {
     "express": "^4.17.1",
+    "pg": "^7.12.1",
     "sequelize": "^5.21.1"
   },
   "devDependencies": {
