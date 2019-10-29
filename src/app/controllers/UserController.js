@@ -5,7 +5,7 @@ class UserController {
     const userExists = await User.findOne({ where: { email: req.body.email } });
 
     if (userExists) {
-      return res.status(400).json({ error: 'Usuário já cadastrado.' });
+      return res.status(400).json({ error: 'User already exists' });
     }
 
     // ver futuramente a necessidade de reduzir os campos de retorno
