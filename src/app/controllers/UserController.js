@@ -18,28 +18,7 @@ class UserController {
   }
 
   async update(req, res) {
-    const schema = Yup.object().shape({
-      name: Yup.string(),
-      email: Yup.string().email(),
-      oldPassword: Yup.string().min(6),
-      password: Yup.string()
-        .min(6)
-        .when('oldPassword', (oldPassword, field) =>
-          oldPassword ? field.required() : field
-        ),
-      // torna o confirm obrigatório apenas se o password for informado
-      confirmPassword: Yup.string().when('password', (password, field) =>
-        password ? field.required().oneOf([Yup.ref('password')]) : field
-      ),
-    });
-
-    const { body } = req;
-    try {
-      await schema.validate(body, { abortEarly: false });
-    } catch (error) {
-      return res.status(400).json({ error: error.errors });
-    }
-    const { email, password } = body;
+    const { email, password } = req.body;
 
     const user = await User.findByPk(req.userId);
 
