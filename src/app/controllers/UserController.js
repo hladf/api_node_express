@@ -1,28 +1,8 @@
-import * as Yup from 'yup';
 import User from '../models/User';
 
 class UserController {
   async store(req, res) {
-    const schema = Yup.object().shape({
-      name: Yup.string().required(),
-      email: Yup.string()
-        .email()
-        .required(),
-      password: Yup.string()
-        .required()
-        .min(6)
-        .when('oldPassword', (oldPassword, field) =>
-          oldPassword ? field.required() : field
-        ),
-    });
-
-    const { body } = req;
-    try {
-      await schema.validate(body, { abortEarly: false });
-    } catch (error) {
-      return res.status(400).json({ error: error.errors });
-    }
-    const { email } = body;
+    const { email } = req.body;
 
     const UserExists = await User.findOne({
       where: { email },
@@ -32,7 +12,7 @@ class UserController {
       return res.status(400).json({ error: 'User already exists' });
     }
 
-    const { id, name, provider } = await User.create(body);
+    const { id, name, provider } = await User.create(req.body);
 
     return res.json({ id, name, email, provider });
   }
