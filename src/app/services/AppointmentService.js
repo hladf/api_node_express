@@ -1,12 +1,22 @@
-import { startOfHour, isBefore, format, parseISO } from 'date-fns';
+import {
+  startOfHour,
+  isBefore,
+  format,
+  parseISO,
+  isBefore,
+  subHours,
+} from 'date-fns';
 import pt from 'date-fns/locale/pt';
 
 import User from '../models/User';
 import Appointment from '../models/Appointment';
 import Notification from '../schemas/Notification';
 
-class CreateAppointmentService {
-  async run({ provider_id, user_id, date }) {
+import CancellationMail from '../jobs/CancellationMail';
+import Queue from '../../lib/Queue';
+
+class AppointmentService {
+  async create({ provider_id, user_id, date }) {
     const checkIsProvider = await User.findOne({
       where: { id: provider_id, provider: true },
     });
@@ -53,6 +63,46 @@ class CreateAppointmentService {
 
     return appointment;
   }
+
+  async cancel({ appointment_id, user_id }) {
+    const appointment = await Appointment.findByPk(appointment_id, {
+      include: [
+        {
+          model: User,
+          as: 'provider',
+          attributes: ['name', 'email'],
+        },
+        {
+          model: User,
+          as: 'user',
+          attributes: ['name'],
+        },
+      ],
+    });
+
+    // só o proprio usuario pode cancelar o seu agendamento
+    if (appointment.user_id !== user_id) {
+      throw new Error('You dont have permission to cancel this appointment');
+    }
+
+    const dateWithSub = subHours(appointment.date, 2);
+
+    // só pode cancelar o agendamento com 2h de antecedencia
+    // para 'segurança' do provider
+    if (isBefore(dateWithSub, new Date())) {
+      throw new Error('You can only cancel to hours in advance');
+    }
+
+    appointment.canceled_at = new Date();
+
+    await appointment.save();
+
+    await Queue.add(CancellationMail.key, {
+      appointment,
+    });
+
+    return appointment;
+  }
 }
 
-export default new CreateAppointmentService();
+export default new AppointmentService();

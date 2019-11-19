@@ -1,12 +1,7 @@
-import { isBefore, subHours } from 'date-fns';
-
 import User from '../models/User';
 import File from '../models/File';
 import Appointment from '../models/Appointment';
-import CreateAppointmentService from '../services/CreateAppointmentService';
-
-import CancellationMail from '../jobs/CancellationMail';
-import Queue from '../../lib/Queue';
+import AppointmentService from '../services/AppointmentService';
 
 class AppointmentController {
   async index(req, res) {
@@ -42,7 +37,8 @@ class AppointmentController {
 
   async store(req, res) {
     const { provider_id, userId: user_id, date } = req.body;
-    const appointment = await CreateAppointmentService.run({
+
+    const appointment = await AppointmentService.create({
       provider_id,
       user_id,
       date,
@@ -51,44 +47,9 @@ class AppointmentController {
   }
 
   async delete(req, res) {
-    const appointment = await Appointment.findByPk(req.params.id, {
-      include: [
-        {
-          model: User,
-          as: 'provider',
-          attributes: ['name', 'email'],
-        },
-        {
-          model: User,
-          as: 'user',
-          attributes: ['name'],
-        },
-      ],
-    });
-
-    // só o proprio usuario pode cancelar o seu agendamento
-    if (appointment.user_id !== req.userId) {
-      return res.status(401).json({
-        error: 'You dont have permission to cancel this appointment',
-      });
-    }
-
-    const dateWithSub = subHours(appointment.date, 2);
-
-    // só pode cancelar o agendamento com 2h de antecedencia
-    // para 'segurança' do provider
-    if (isBefore(dateWithSub, new Date())) {
-      return res
-        .status(401)
-        .json({ error: 'You can only cancel to hours in advance' });
-    }
-
-    appointment.canceled_at = new Date();
-
-    await appointment.save();
-
-    await Queue.add(CancellationMail.key, {
-      appointment,
+    const appointment = await AppointmentService.cancel({
+      appointment_id: req.params.id,
+      user_id: req.userId,
     });
 
     return res.json(appointment);
