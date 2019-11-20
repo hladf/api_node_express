@@ -1,11 +1,4 @@
-import {
-  startOfHour,
-  isBefore,
-  format,
-  parseISO,
-  isBefore,
-  subHours,
-} from 'date-fns';
+import { startOfHour, isBefore, format, parseISO, subHours } from 'date-fns';
 import pt from 'date-fns/locale/pt';
 
 import User from '../models/User';
@@ -14,6 +7,7 @@ import Notification from '../schemas/Notification';
 
 import CancellationMail from '../jobs/CancellationMail';
 import Queue from '../../lib/Queue';
+import Cache from '../../lib/Cache';
 
 class AppointmentService {
   async create({ provider_id, user_id, date }) {
@@ -61,6 +55,8 @@ class AppointmentService {
       user: provider_id,
     });
 
+    await Cache.invalidatePrefix(`user:${user_id}:appointments`);
+
     return appointment;
   }
 
@@ -100,6 +96,8 @@ class AppointmentService {
     await Queue.add(CancellationMail.key, {
       appointment,
     });
+
+    await Cache.invalidatePrefix(`user:${user_id}:appointments`);
 
     return appointment;
   }
